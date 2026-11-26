@@ -14,7 +14,7 @@ Calculadora para saber cuánto puedes pedir de anticipo de la paga extra y lleva
 
 ## Datos
 
-Todo se guarda en el `localStorage` del navegador; no hay servidor. Desde la sección _Copia de seguridad_ se puede descargar un `.json`, volver a importarlo o enviarlo por correo.
+Todo se guarda en el `localStorage` del navegador. Desde la sección _Copia de seguridad_ se puede descargar un `.json`, volver a importarlo o enviarlo por correo.
 
 ## Desarrollo
 
