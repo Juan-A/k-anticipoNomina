@@ -166,6 +166,9 @@ a.btn { display: inline-block; text-decoration: none; text-align: center; }
 .h-amt { font-family: var(--display); font-weight: 700; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .h-meta { font-size: 0.86rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 .h-meta b { color: var(--ink); font-weight: 600; }
+.h-btns { display: flex; gap: 6px; }
+.h-edit { border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 6px 10px; font-size: 0.82rem; color: var(--muted); }
+.h-edit:hover { border-color: var(--accent); color: var(--accent); }
 .h-del { border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 6px 10px; font-size: 0.82rem; color: var(--muted); }
 .h-del:hover { border-color: var(--bad); color: var(--bad); }
 .h-del.confirm { background: var(--bad); border-color: var(--bad); color: #fff; }
