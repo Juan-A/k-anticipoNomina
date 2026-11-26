@@ -14,6 +14,8 @@ Calculadora para saber cuánto puedes pedir de anticipo de la paga extra y lleva
 
 ## Datos
 
+El sueldo de referencia se puede escribir a mano o sacar de la nómina en PDF: la app busca la línea «Sueldo Mensual» o «Reference Salary». El PDF se lee en el navegador con [pdf.js](https://mozilla.github.io/pdf.js/) (que se descarga de cdnjs solo al elegir un archivo) y no se envía a ningún sitio ni se guarda.
+
 Todo se guarda en el `localStorage` del navegador. Desde la sección _Copia de seguridad_ se puede descargar un `.json`, volver a importarlo o enviarlo por correo.
 
 ## Desarrollo

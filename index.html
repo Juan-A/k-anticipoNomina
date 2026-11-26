@@ -17,9 +17,8 @@
       <p class="sub">1/6 de la paga por cada mes, hasta un 80%.</p>
     </div>
     <div class="ref">
-      <label for="ref">Sueldo de referencia mensual</label>
-      <div class="field"><input id="ref" type="text" inputmode="decimal" autocomplete="off" aria-describedby="ref-help"><span aria-hidden="true">€</span></div>
-      <span id="ref-help" class="fhint">Workday › Perfil › Compensation</span>
+      <span class="ref-label" id="ref-label">Sueldo de referencia mensual</span>
+      <button class="ref-btn" type="button" id="ref-btn" data-act="ref-open" aria-describedby="ref-label"></button>
     </div>
   </header>
 
@@ -108,6 +107,36 @@
     </details>
   </section>
 </div>
+<dialog class="dlg" id="ref-dlg" aria-labelledby="dlg-title">
+  <form class="dlg-in" id="ref-form" method="dialog" novalidate>
+    <div class="dlg-head">
+      <h2 id="dlg-title">Tu sueldo de referencia</h2>
+      <button class="btn-ic" type="button" data-act="ref-close" aria-label="Cerrar">×</button>
+    </div>
+    <p class="hint">Hace falta para calcular cuánto puedes anticipar. Puedes sacarlo de tu nómina o escribirlo tú.</p>
+
+    <div class="drop" id="ref-drop">
+      <p><b>Carga tu nómina en PDF</b></p>
+      <p class="fhint">Se busca la línea «Sueldo Mensual» o «Reference Salary».</p>
+      <button class="btn" type="button" data-act="ref-pdf">Elegir PDF</button>
+      <input id="ref-file" type="file" accept=".pdf,application/pdf" hidden aria-label="Nómina en PDF">
+      <p class="drop-status" id="ref-status" role="status"></p>
+    </div>
+
+    <div class="fld">
+      <label for="ref">O escríbelo a mano</label>
+      <div class="field"><input id="ref" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-describedby="ref-help"><span aria-hidden="true">€</span></div>
+      <span id="ref-help" class="fhint">Lo encuentras en Workday › Perfil › Compensation.</span>
+    </div>
+
+    <p class="privacy"><b>Todo se queda en tu ordenador.</b> La nómina se lee dentro de este navegador y no se envía a ningún servidor ni se guarda. Solo se conserva el importe del sueldo, en este navegador.</p>
+
+    <div class="btns">
+      <button class="btn" type="submit">Guardar sueldo</button>
+      <button class="btn ghost" type="button" data-act="ref-close">Ahora no</button>
+    </div>
+  </form>
+</dialog>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="app.js"></script>

@@ -55,13 +55,33 @@ button { cursor: pointer; }
 .top { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
 .top h1 { font-size: clamp(1.6rem, 4.5vw, 2.2rem); }
 .top .sub { color: var(--muted); font-size: 0.92rem; margin-top: 4px; max-width: 52ch; }
-.ref { display: flex; flex-direction: column; gap: 4px; }
-.ref label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
-.ref .field { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
-.ref input { border: 0; background: transparent; width: 110px; padding: 10px 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.ref .fhint { font-size: 0.75rem; }
-.ref input:focus-visible { outline: none; }
-.ref .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ref { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.ref-label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+.ref-btn { display: flex; align-items: baseline; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ref-btn:hover { border-color: var(--accent); }
+.ref-btn .act { font-size: 0.82rem; font-weight: 500; color: var(--accent); }
+.ref-btn.unset { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+.ref-btn.unset .act { color: inherit; }
+
+/* Ventana del sueldo */
+.dlg { border: 0; padding: 0; border-radius: var(--radius); background: var(--surface); color: var(--ink); width: min(480px, calc(100% - 32px)); max-height: calc(100% - 32px); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25); }
+.dlg::backdrop { background: rgba(8, 14, 12, 0.55); }
+.dlg-in { display: grid; gap: 14px; padding: 20px; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dlg-head h2 { font-size: 1.25rem; }
+.dlg .hint { color: var(--muted); font-size: 0.9rem; }
+.drop { display: grid; justify-items: start; gap: 6px; border: 1.5px dashed var(--line); border-radius: 12px; padding: 14px; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop .btn { margin-top: 4px; }
+.drop-status { font-size: 0.86rem; }
+.drop-status:empty { display: none; }
+.drop-status.ok { color: var(--accent); font-weight: 600; }
+.drop-status.err { color: var(--bad); }
+.dlg .field { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; }
+.dlg .field input { border: 0; background: transparent; flex: 1; min-width: 0; padding: 10px 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dlg .field input:focus-visible { outline: none; }
+.dlg .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.privacy { font-size: 0.85rem; background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; }
 
 .banner { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; }
 
@@ -196,6 +216,7 @@ textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, Menlo
   .grid2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 440px) {
+  .ref { align-items: flex-start; }
   .card { padding: 16px; }
   .day { min-height: 46px; }
   .cal .blank { min-height: 46px; }
@@ -204,3 +225,4 @@ textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, Menlo
   .h-item { grid-template-columns: 1fr auto; }
   .h-amt { grid-column: 1 / -1; }
 }
+.linkbtn { border: 0; background: none; padding: 0; color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }

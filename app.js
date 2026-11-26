@@ -66,6 +66,8 @@ function normalizeState(s) {
   s.advances.forEach((a) => {
     if (!a.id) a.id = newId();
   });
+  // Los datos anteriores a este campo ya traían un sueldo elegido por el usuario.
+  if (typeof s.refConfirmed !== 'boolean') s.refConfirmed = true;
   return s;
 }
 
@@ -77,7 +79,8 @@ function loadState() {
   } catch {
     storageAvailable = false;
   }
-  return { ref: 1500, advances: [] };
+  // Sueldo de ejemplo hasta que el usuario indique el suyo.
+  return { ref: 1500, refConfirmed: false, advances: [] };
 }
 
 function saveState() {
@@ -152,7 +155,9 @@ function renderHero() {
 
   let note = '';
   const m = t.getMonth();
-  if (isExtraPayMonth(m)) {
+  if (!state.refConfirmed) {
+    note = `<p class="note warn">Estas cifras usan un sueldo de ejemplo de ${eur(state.ref)}. <button class="linkbtn" type="button" data-act="ref-open">Indica el tuyo</button> para que sean reales.</p>`;
+  } else if (isExtraPayMonth(m)) {
     note = `<p class="note warn">No hace falta pedir anticipo en ${monthName(t.getFullYear(), m)}: este mes cobras la paga extra y lo anticipado se descontaría de ella.</p>`;
   } else if (available === 0 && months < 6) {
     note = `<p class="note">No queda nada por anticipar este mes. El 1 de ${monthName(t.getFullYear(), m + 1)} se suman ${eur(round2(capFor(months + 1) - cap))}.</p>`;
@@ -370,7 +375,97 @@ function renderAll() {
   $('bk').value = JSON.stringify(state, null, 2);
   // No pisar lo que el usuario está escribiendo.
   if (document.activeElement !== $('bk-email')) $('bk-email').value = state.email || '';
-  if (document.activeElement !== $('ref')) $('ref').value = formatAmountInput(state.ref);
+  renderRefButton();
+}
+
+function renderRefButton() {
+  const btn = $('ref-btn');
+  btn.classList.toggle('unset', !state.refConfirmed);
+  btn.innerHTML = state.refConfirmed
+    ? `<span class="num">${eur(state.ref)}</span><span class="act">Cambiar</span>`
+    : '<span>Sin indicar</span><span class="act">Indicar</span>';
+}
+
+// --- Sueldo de referencia: ventana y lectura de la nómina ---
+// La nómina se lee solo en el navegador; el PDF no sale del equipo.
+
+const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+const PDFJS_SRI = 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
+// "Sueldo Mensual 1.324,45" (nómina en español) o "Reference Salary 1.324,45" (en inglés).
+const SALARY_RE = /(Sueldo\s*Mensual|Reference\s*Salary)\s*:?\s*(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})/i;
+
+let pdfjsPromise = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  pdfjsPromise ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = PDFJS_URL + 'pdf.min.js';
+    script.integrity = PDFJS_SRI;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_URL + 'pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => {
+      pdfjsPromise = null;
+      reject(new Error('load'));
+    };
+    document.head.appendChild(script);
+  });
+  return pdfjsPromise;
+}
+
+async function findSalaryInPdf(file) {
+  const pdfjs = await loadPdfJs();
+  // isEvalSupported: false evita ejecutar código incrustado en las fuentes del PDF.
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+  try {
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const { items } = await page.getTextContent();
+      const strs = items.map((it) => it.str);
+      // Según el PDF, la etiqueta y el importe pueden venir en trozos separados o pegados.
+      const match = SALARY_RE.exec(strs.join(' ')) || SALARY_RE.exec(strs.join(''));
+      if (match) return { label: match[1].replace(/\s+/g, ' '), amount: parseAmount(match[2]) };
+    }
+    return null;
+  } finally {
+    doc.destroy();
+  }
+}
+
+function setRefStatus(text, kind = '') {
+  const el = $('ref-status');
+  el.textContent = text;
+  el.className = `drop-status${kind ? ' ' + kind : ''}`;
+}
+
+async function readPayslip(file) {
+  if (!file) return;
+  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+    setRefStatus('Ese archivo no es un PDF.', 'err');
+    return;
+  }
+  setRefStatus('Leyendo la nómina…');
+  try {
+    const found = await findSalaryInPdf(file);
+    if (found && found.amount > 0) {
+      $('ref').value = formatAmountInput(found.amount);
+      setRefStatus(`Encontrado «${found.label}»: ${eur(found.amount)}. Revísalo y pulsa Guardar.`, 'ok');
+    } else {
+      setRefStatus('No encuentro «Sueldo Mensual» ni «Reference Salary» en este PDF. Escribe el importe a mano.', 'err');
+    }
+  } catch (err) {
+    if (err?.message === 'load') setRefStatus('No se pudo cargar el lector de PDF. Revisa la conexión o escribe el importe a mano.', 'err');
+    else if (err?.name === 'PasswordException') setRefStatus('El PDF está protegido con contraseña. Escribe el importe a mano.', 'err');
+    else setRefStatus('No se pudo leer el PDF. Escribe el importe a mano.', 'err');
+  }
+}
+
+function openRefDialog() {
+  $('ref').value = state.refConfirmed ? formatAmountInput(state.ref) : '';
+  setRefStatus('');
+  $('ref-dlg').showModal();
 }
 
 let toastTimer;
@@ -483,6 +578,10 @@ const actions = {
 
   'bk-up': () => $('bk-file').click(),
 
+  'ref-open': openRefDialog,
+  'ref-close': () => $('ref-dlg').close(),
+  'ref-pdf': () => $('ref-file').click(),
+
   'bk-restore'() {
     if (importFromText($('bk').value)) toast('Datos restaurados');
     else toast('El texto no tiene un formato válido');
@@ -577,16 +676,44 @@ $('f-date').addEventListener('change', () => {
 
 $('f-amt').addEventListener('input', updateFormHint);
 
-$('ref').addEventListener('change', () => {
+$('ref-form').addEventListener('submit', (e) => {
+  e.preventDefault();
   const value = parseAmount($('ref').value);
-  if (isFinite(value) && value > 0) {
-    state.ref = round2(value);
-    saveState();
-    toast('Sueldo de referencia actualizado');
-  } else {
-    toast('Escribe un importe válido');
+  if (!isFinite(value) || value <= 0) {
+    setRefStatus('Escribe un importe válido o carga tu nómina.', 'err');
+    $('ref').focus();
+    return;
   }
+  state.ref = round2(value);
+  state.refConfirmed = true;
+  saveState();
+  $('ref-dlg').close();
   renderAll();
+  toast('Sueldo de referencia guardado');
+});
+
+$('ref-file').addEventListener('change', () => {
+  const input = $('ref-file');
+  readPayslip(input.files?.[0]);
+  input.value = '';
+});
+
+// Arrastrar la nómina sobre el recuadro.
+const drop = $('ref-drop');
+drop.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  drop.classList.add('over');
+});
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.classList.remove('over');
+  readPayslip(e.dataTransfer?.files?.[0]);
+});
+
+// Clic en el fondo oscuro: cerrar.
+$('ref-dlg').addEventListener('click', (e) => {
+  if (e.target === $('ref-dlg')) $('ref-dlg').close();
 });
 
 // El evento toggle no burbujea, por eso se escucha en fase de captura.
@@ -630,3 +757,4 @@ $('bk-file').addEventListener('change', () => {
 
 $('f-date').value = selectedDate;
 renderAll();
+if (!state.refConfirmed) openRefDialog();
