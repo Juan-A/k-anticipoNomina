@@ -107,7 +107,11 @@ const capFor = (months) => round2(monthlyBase() * months * ADVANCE_RATIO);
 
 const advancesIn = (key) => state.advances.filter((a) => halfKey(fromIso(a.date)) === key);
 const requestedIn = (key) => round2(sum(advancesIn(key)));
-const availableAt = (d) => Math.max(0, round2(capFor(monthsAccrued(d)) - requestedIn(halfKey(d))));
+// Al editar un anticipo, su propio importe no cuenta como ya pedido.
+const availableAt = (d, excludeId = null) => {
+  const others = advancesIn(halfKey(d)).filter((a) => a.id !== excludeId);
+  return Math.max(0, round2(capFor(monthsAccrued(d)) - sum(others)));
+};
 
 // Lo pedido de lunes a jueves se cobra ese viernes; lo pedido de viernes a domingo, el siguiente.
 function payday(d) {
@@ -117,6 +121,7 @@ function payday(d) {
 
 function replaceState(next) {
   state = next;
+  if (editingId && !state.advances.some((a) => a.id === editingId)) stopEditing();
   saveState();
   renderAll();
 }
@@ -127,6 +132,7 @@ const now = today();
 let view = { year: now.getFullYear(), month: now.getMonth() };
 let selectedDate = toIso(now);
 let pendingDeleteId = null;
+let editingId = null;
 const openYears = {};
 
 function renderHero() {
@@ -310,7 +316,10 @@ function renderHistory() {
           <b>Pedido ${shortDate(d)}</b> · cobro ${shortDate(payday(d))}<br>
           ${halfName(half(d))} ${d.getFullYear()}${a.ticket ? ` · ticket ${escapeHtml(a.ticket)}` : ''}
         </div>
-        <button type="button" class="h-del${confirming ? ' confirm' : ''}" data-act="del" data-id="${escapeHtml(a.id)}">${confirming ? 'Confirmar' : 'Eliminar'}</button>
+        <div class="h-btns">
+          <button type="button" class="h-edit" data-act="edit" data-id="${escapeHtml(a.id)}" aria-label="Editar anticipo de ${eur(a.amount)}">${editingId === a.id ? 'Editando' : 'Editar'}</button>
+          <button type="button" class="h-del${confirming ? ' confirm' : ''}" data-act="del" data-id="${escapeHtml(a.id)}">${confirming ? 'Confirmar' : 'Eliminar'}</button>
+        </div>
       </li>`;
     }
     html += '</ul></details>';
@@ -327,7 +336,7 @@ function updateFormHint() {
     return;
   }
 
-  const max = availableAt(d);
+  const max = availableAt(d, editingId);
   const extraPayNote = isExtraPayMonth(d.getMonth()) ? ' · <b>No hace falta pedirlo este mes</b>' : '';
   $('f-hint').innerHTML = `Disponible en ${monthName(d.getFullYear(), d.getMonth())}: <b class="num">${eur(max)}</b> · Cobro el <b>${shortDate(payday(d))}</b>${extraPayNote}`;
 
@@ -399,8 +408,29 @@ const actions = {
   max() {
     const d = fromIso($('f-date').value);
     if (!isValidDate(d)) return;
-    $('f-amt').value = formatAmountInput(availableAt(d));
+    $('f-amt').value = formatAmountInput(availableAt(d, editingId));
     updateFormHint();
+  },
+
+  edit(el) {
+    const a = state.advances.find((x) => x.id === el.dataset.id);
+    if (!a) return;
+    editingId = a.id;
+    pendingDeleteId = null;
+    $('f-date').value = a.date;
+    $('f-amt').value = formatAmountInput(a.amount);
+    $('f-ticket').value = a.ticket || '';
+    selectedDate = a.date;
+    view = { year: fromIso(a.date).getFullYear(), month: fromIso(a.date).getMonth() };
+    renderAll();
+    updateFormMode();
+    $('form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('f-amt').focus({ preventScroll: true });
+  },
+
+  'cancel-edit'() {
+    stopEditing();
+    renderAll();
   },
 
   del(el) {
@@ -411,6 +441,7 @@ const actions = {
       return;
     }
     pendingDeleteId = null;
+    if (editingId === id) stopEditing();
     replaceState({ ...state, advances: state.advances.filter((a) => a.id !== id) });
     toast('Anticipo eliminado');
   },
@@ -457,6 +488,20 @@ const actions = {
     else toast('El texto no tiene un formato válido');
   },
 };
+
+function updateFormMode() {
+  const editing = editingId !== null;
+  $('form-title').textContent = editing ? 'Editar anticipo' : 'Registrar un anticipo';
+  $('f-submit').textContent = editing ? 'Guardar cambios' : 'Guardar anticipo';
+  $('f-cancel').hidden = !editing;
+}
+
+function stopEditing() {
+  editingId = null;
+  $('f-amt').value = '';
+  $('f-ticket').value = '';
+  updateFormMode();
+}
 
 function moveMonth(delta) {
   const d = new Date(view.year, view.month + delta, 1);
@@ -511,12 +556,17 @@ $('form').addEventListener('submit', (e) => {
     return;
   }
 
-  state.advances.push({ id: newId(), date, amount: round2(amount), ticket: $('f-ticket').value.trim() });
+  const ticket = $('f-ticket').value.trim();
+  const existing = editingId && state.advances.find((a) => a.id === editingId);
+  if (existing) {
+    Object.assign(existing, { date, amount: round2(amount), ticket });
+  } else {
+    state.advances.push({ id: newId(), date, amount: round2(amount), ticket });
+  }
   saveState();
-  $('f-amt').value = '';
-  $('f-ticket').value = '';
+  stopEditing();
   renderAll();
-  toast('Anticipo guardado');
+  toast(existing ? 'Anticipo actualizado' : 'Anticipo guardado');
 });
 
 $('f-date').addEventListener('change', () => {
