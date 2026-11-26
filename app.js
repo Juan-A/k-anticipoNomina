@@ -271,9 +271,12 @@
       var fallback = function () { ta.focus(); ta.select(); toast('Selecciona el texto y cópialo con Ctrl+C'); };
       try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (err) { fallback(); }
     } else if (act === 'bk-dl') {
-      if (!dl) return;
-      dl.save({ filename: 'anticipos-paga-extra-' + iso(today0()) + '.json', data: JSON.stringify(state, null, 2) })
-        .then(function () { toast('Archivo guardado'); }, function (err) { if (!err || err.code !== 'declined') toast('No se pudo guardar el archivo'); });
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'anticipos-paga-extra-' + iso(today0()) + '.json';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 0);
     } else if (act === 'bk-mail') {
       var fail = function () { toast('Usa Copiar y pega el texto en el correo'); };
       if (longMail) {
@@ -321,13 +324,6 @@
     if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('Ese correo no parece válido'); return; }
     state.email = v; save(); renderAll(); toast(v ? 'Correo guardado' : 'Correo borrado');
   });
-
-  var dl = null;
-  try {
-    if (window.claude && window.claude.use) {
-      window.claude.use('downloads').then(function (d) { dl = d; if (d) $('bk-dl').hidden = false; }, function () {});
-    }
-  } catch (e) {}
 
   $('bk-file').addEventListener('change', function () {
     var inp = $('bk-file'), f = inp.files && inp.files[0];
